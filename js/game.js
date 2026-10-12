@@ -191,6 +191,47 @@ export class Game {
                 }
             }
         });
+
+        // Touch Drag & Tap on Canvas
+        let isTouching = false;
+        this.canvas.addEventListener('touchstart', (e) => {
+            sound.init();
+            if (this.isGameOver) return;
+            const t = e.touches[0];
+            isTouching = true;
+            const pos = getCanvasCoords(t.clientX, t.clientY);
+            if (this.hero.type === 'archer') {
+                this.input.aiming = true;
+                this.input.attackHeld = true;
+                const heroScreenX = this.hero.x - this.camera.x;
+                const heroScreenY = this.hero.y - this.camera.y - 40;
+                this.input.aimOffset = { dx: pos.x - heroScreenX, dy: pos.y - heroScreenY };
+            } else {
+                this.input.attack = true;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (isTouching && this.hero.type === 'archer' && this.input.aiming) {
+                const t = e.touches[0];
+                const pos = getCanvasCoords(t.clientX, t.clientY);
+                const heroScreenX = this.hero.x - this.camera.x;
+                const heroScreenY = this.hero.y - this.camera.y - 40;
+                this.input.aimOffset = { dx: pos.x - heroScreenX, dy: pos.y - heroScreenY };
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+            if (isTouching) {
+                isTouching = false;
+                if (this.hero.type === 'archer') {
+                    this.input.releaseAim = true;
+                    this.input.releaseAttack = true;
+                    this.input.aiming = false;
+                    this.input.attackHeld = false;
+                }
+            }
+        }, { passive: true });
     }
 
     // In-Battle Cartoon Wars Mana Booster

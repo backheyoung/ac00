@@ -31,7 +31,6 @@ body {
     box-shadow: 0 0 50px rgba(0, 229, 255, 0.15), 0 0 80px rgba(255, 0, 85, 0.1);
     border-radius: 8px;
     overflow: hidden;
-    touch-action: none;
 }
 
 canvas {
@@ -39,6 +38,7 @@ canvas {
     width: 100%;
     height: 100%;
     background-color: #0a0d14;
+    touch-action: none;
 }
 
 /* ================= IN-GAME MOBILE & PC TOUCH CONTROLS ================= */
@@ -852,6 +852,36 @@ canvas {
     }
 }
 
+@media (max-width: 600px) {
+    .virtual-summon-bar {
+        bottom: 86px;
+        gap: 4px;
+    }
+    .btn-summon {
+        width: 48px;
+        height: 48px;
+        font-size: 10px;
+    }
+    .summon-icon {
+        font-size: 14px;
+    }
+    .summon-name {
+        font-size: 9px;
+    }
+    .summon-cost {
+        font-size: 9px;
+    }
+    .btn-touch {
+        width: 48px;
+        height: 48px;
+        font-size: 16px;
+    }
+    .btn-attack {
+        width: 64px;
+        height: 64px;
+    }
+}
+
 /* ================= MODAL OVERLAY & QR CONNECT ================= */
 .modal-overlay {
     position: absolute;
@@ -961,75 +991,11 @@ canvas {
     color: #ffd700;
 }
 
-/* ================= PORTRAIT ORIENTATION PROMPT ================= */
-#orientation-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 7, 10, 0.98);
-    z-index: 99999;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 24px;
-}
-
-.orient-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.orient-phone-icon {
-    font-size: 64px;
-    animation: rotatePhone 2.2s infinite ease-in-out;
-    margin-bottom: 20px;
-}
-
-@keyframes rotatePhone {
-    0% { transform: rotate(0deg); }
-    30% { transform: rotate(-90deg); }
-    70% { transform: rotate(-90deg); }
-    100% { transform: rotate(0deg); }
-}
-
-.orient-title {
-    font-size: 22px;
-    font-weight: 900;
-    color: #38bdf8;
-    margin-bottom: 10px;
-}
-
-.orient-desc {
-    font-size: 14px;
-    color: #94a3b8;
-    line-height: 1.5;
-}
-
-@media screen and (orientation: portrait) and (max-width: 900px) {
-    #orientation-overlay:not(.dismissed) {
-        display: flex;
-    }
-}
-
-.btn-orient-dismiss {
-    margin-top: 18px;
-    background: rgba(30, 41, 59, 0.85);
-    border: 1.5px solid #64748b;
-    color: #cbd5e1;
-    padding: 10px 22px;
-    border-radius: 24px;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
+/* Fast Touch & Tap Highlight Optimization */
+button, .stage-card, .hero-card, .upgrade-item, .btn-island, .tab-btn {
     touch-action: manipulation;
-    transition: 0.2s;
-}
-
-.btn-orient-dismiss:hover, .btn-orient-dismiss:active {
-    background: #0ea5e9;
-    color: #fff;
-    border-color: #38bdf8;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* Floating Toast Notification */
