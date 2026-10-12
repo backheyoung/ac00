@@ -484,20 +484,81 @@ if (btnCopyUrl && qrUrlText) {
     });
 }
 
-// Fullscreen Toggle
+// Toast Notification Utility
+const toastPill = document.getElementById('toast-pill');
+let toastTimer = null;
+function showToast(msg, duration = 2500) {
+    if (!toastPill) return;
+    toastPill.textContent = msg;
+    toastPill.style.display = 'block';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        toastPill.style.display = 'none';
+    }, duration);
+}
+
+// Orientation Overlay Dismiss Button
+const btnDismissOrient = document.getElementById('btn-dismiss-orient');
+const orientationOverlay = document.getElementById('orientation-overlay');
+if (btnDismissOrient && orientationOverlay) {
+    btnDismissOrient.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.init();
+        orientationOverlay.classList.add('dismissed');
+        orientationOverlay.style.display = 'none';
+        showToast('📱 가로 모드로 전환하시면 더 넓은 전장으로 플레이할 수 있습니다!');
+    });
+}
+
+// Robust Fullscreen Toggle (Supports Desktop, Android, iOS fallback)
 function toggleFullscreen() {
     sound.init();
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
+    const doc = document;
+    const docEl = document.documentElement;
+    const isFs = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
+
+    if (!isFs) {
+        if (docEl.requestFullscreen) {
+            docEl.requestFullscreen().catch(() => {
+                fallbackFullscreen();
+            });
+        } else if (docEl.webkitRequestFullscreen) {
+            try { docEl.webkitRequestFullscreen(); } catch (e) { fallbackFullscreen(); }
+        } else if (docEl.mozRequestFullScreen) {
+            try { docEl.mozRequestFullScreen(); } catch (e) { fallbackFullscreen(); }
+        } else if (docEl.msRequestFullscreen) {
+            try { docEl.msRequestFullscreen(); } catch (e) { fallbackFullscreen(); }
+        } else {
+            fallbackFullscreen();
+        }
     } else {
-        document.exitFullscreen().catch(() => {});
+        if (doc.exitFullscreen) {
+            doc.exitFullscreen().catch(() => {});
+        } else if (doc.webkitExitFullscreen) {
+            try { doc.webkitExitFullscreen(); } catch (e) {}
+        } else if (doc.mozCancelFullScreen) {
+            try { doc.mozCancelFullScreen(); } catch (e) {}
+        } else if (doc.msExitFullscreen) {
+            try { doc.msExitFullscreen(); } catch (e) {}
+        }
+        document.body.classList.remove('simulated-fullscreen');
     }
+}
+
+function fallbackFullscreen() {
+    document.body.classList.toggle('simulated-fullscreen');
+    window.scrollTo(0, 1);
+    showToast('⛶ 전체 화면 모드가 적용되었습니다 (기기를 가로로 회전해주세요)');
 }
 
 const btnFsLobby = document.getElementById('btn-fullscreen-lobby');
 const btnFsIngame = document.getElementById('btn-fullscreen-ingame');
-if (btnFsLobby) btnFsLobby.addEventListener('click', toggleFullscreen);
-if (btnFsIngame) btnFsIngame.addEventListener('click', toggleFullscreen);
+if (btnFsLobby) {
+    btnFsLobby.addEventListener('click', toggleFullscreen);
+}
+if (btnFsIngame) {
+    btnFsIngame.addEventListener('click', toggleFullscreen);
+}
 
 // Web Audio Unlock on First Touch/Click
 ['touchstart', 'click', 'keydown'].forEach(evt => {

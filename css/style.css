@@ -253,6 +253,8 @@ canvas {
     z-index: 50;
     padding: 24px 36px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 .lobby-header {
@@ -343,6 +345,8 @@ canvas {
 .tab-content {
     display: none;
     flex: 1;
+}
+
 .tab-content.active {
     display: flex;
     flex-direction: column;
@@ -783,22 +787,55 @@ canvas {
     #game-container {
         width: 100vw;
         height: 100vh;
+        height: 100dvh;
         max-width: none;
         max-height: none;
         border-radius: 0;
+        aspect-ratio: unset;
+    }
+    #lobby-screen {
+        padding: 12px 14px;
     }
     .lobby-header {
         padding-bottom: 8px;
         margin-bottom: 8px;
     }
     .lobby-title {
-        font-size: 26px;
+        font-size: 22px;
     }
-    .stages-grid, .shop-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .lobby-subtitle {
+        display: none;
+    }
+    .lobby-header-actions {
+        gap: 6px;
+    }
+    .btn-lobby-util {
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+    .gold-badge {
+        padding: 5px 12px;
+        font-size: 15px;
+    }
+    .lobby-tabs {
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+    .tab-btn {
+        padding: 7px 12px;
+        font-size: 12px;
+    }
+    .stages-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+    }
+    .shop-grid {
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 10px;
     }
     .heroes-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 10px;
     }
     .btn-touch {
         width: 54px;
@@ -970,7 +1007,65 @@ canvas {
 }
 
 @media screen and (orientation: portrait) and (max-width: 900px) {
-    #orientation-overlay {
+    #orientation-overlay:not(.dismissed) {
         display: flex;
     }
+}
+
+.btn-orient-dismiss {
+    margin-top: 18px;
+    background: rgba(30, 41, 59, 0.85);
+    border: 1.5px solid #64748b;
+    color: #cbd5e1;
+    padding: 10px 22px;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: 0.2s;
+}
+
+.btn-orient-dismiss:hover, .btn-orient-dismiss:active {
+    background: #0ea5e9;
+    color: #fff;
+    border-color: #38bdf8;
+}
+
+/* Floating Toast Notification */
+.toast-pill {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    border: 1.5px solid #38bdf8;
+    color: #f1f5f9;
+    padding: 10px 22px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 800;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.4);
+    z-index: 100000;
+    pointer-events: none;
+    text-align: center;
+    max-width: 90vw;
+    animation: fadeInToast 0.2s ease-out;
+}
+
+@keyframes fadeInToast {
+    from { opacity: 0; transform: translate(-50%, -10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+body.simulated-fullscreen #game-container {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    z-index: 99999;
+    border-radius: 0;
 }
