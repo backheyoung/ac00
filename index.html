@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#05070a">
+    <title>스틱맨 워즈: 영웅의 격돌</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Main Game Canvas (Responsive 16:9) -->
+        <canvas id="gameCanvas" width="1280" height="720"></canvas>
+
+        <!-- Top In-Game Utility Bar -->
+        <div id="ingame-top-bar" class="ingame-overlay" style="display: none;">
+            <button id="btn-fullscreen-ingame" class="btn-ctrl-sm">⛶ 전체화면</button>
+            <button id="btn-pause-lobby" class="btn-ctrl-sm">로비로 나가기</button>
+        </div>
+
+        <!-- ================= IN-GAME MOBILE & PC TOUCH CONTROLS ================= -->
+        <div id="mobile-controls" class="ingame-overlay" style="display: none;">
+            <!-- Left: Virtual D-Pad -->
+            <div class="virtual-dpad">
+                <button id="touch-left" class="btn-touch btn-dir">◀</button>
+                <button id="touch-jump" class="btn-touch btn-jump">▲<br><small>점프</small></button>
+                <button id="touch-right" class="btn-touch btn-dir">▶</button>
+            </div>
+
+            <!-- Bottom Center: Unit Summons & Mana Boost -->
+            <div class="virtual-summon-bar">
+                <button id="touch-summon-1" class="btn-summon" data-unit="swordsman">
+                    <span class="summon-icon">⚔️</span>
+                    <span class="summon-name">검병</span>
+                    <span class="summon-cost">30⚡</span>
+                </button>
+                <button id="touch-summon-2" class="btn-summon" data-unit="shield">
+                    <span class="summon-icon">🛡️</span>
+                    <span class="summon-name">방패병</span>
+                    <span class="summon-cost">50⚡</span>
+                </button>
+                <button id="touch-summon-3" class="btn-summon" data-unit="bow">
+                    <span class="summon-icon">🏹</span>
+                    <span class="summon-name">궁수</span>
+                    <span class="summon-cost">45⚡</span>
+                </button>
+                <button id="touch-summon-4" class="btn-summon" data-unit="mage">
+                    <span class="summon-icon">🔮</span>
+                    <span class="summon-name">마법사</span>
+                    <span class="summon-cost">80⚡</span>
+                </button>
+                <button id="touch-mana-boost" class="btn-summon btn-mana-boost">
+                    <span class="summon-icon">⚡</span>
+                    <span class="summon-name">마나UP</span>
+                    <span id="label-boost-cost" class="summon-cost">50⚡</span>
+                </button>
+            </div>
+
+            <!-- Right: Action Buttons -->
+            <div class="virtual-actions">
+                <button id="touch-skill-1" class="btn-touch btn-skill btn-skill1">⚡<br><small>회천강타</small></button>
+                <button id="touch-skill-2" class="btn-touch btn-skill btn-skill2">💥<br><small>스킬2</small></button>
+                <button id="touch-ult" class="btn-touch btn-skill btn-ult">🔥<br><small>궁극기</small></button>
+                <button id="touch-attack" class="btn-touch btn-attack">
+                    <span id="attack-btn-icon">⚔️</span>
+                    <span id="attack-btn-label">공격</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= LOBBY & SHOP SYSTEM ================= -->
+        <div id="lobby-screen">
+            <!-- Lobby Header -->
+            <header class="lobby-header">
+                <div>
+                    <h1 class="lobby-title">STICKMAN WARS</h1>
+                    <p class="lobby-subtitle">카툰워즈 × 팔라독 액션 라인 디펜스</p>
+                </div>
+                <div class="lobby-header-actions">
+                    <button id="btn-phone-connect" class="btn-lobby-util">📱 폰으로 하기 (QR)</button>
+                    <button id="btn-fullscreen-lobby" class="btn-lobby-util">⛶ 전체화면</button>
+                    <div class="gold-badge">
+                        <span>💰</span>
+                        <span id="lobby-gold-display">0</span>
+                        <small>G</small>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Navigation Tabs -->
+            <nav class="lobby-tabs">
+                <button class="tab-btn active" data-tab="tab-stages">⚔️ 스테이지 출격</button>
+                <button class="tab-btn" data-tab="tab-heroes">👤 영웅 선택소</button>
+                <button class="tab-btn" data-tab="tab-shop">🏛️ 강화 상점</button>
+            </nav>
+
+            <!-- TAB 1: STAGE SELECT (WORLD MAP & MULTI-ISLAND) -->
+            <div id="tab-stages" class="tab-content active">
+                <div class="island-nav-wrapper">
+                    <div class="island-selector" id="island-selector-bar">
+                        <!-- Island tabs populated via JS -->
+                    </div>
+                    <div class="island-banner" id="island-banner-info">
+                        <!-- Island theme banner populated via JS -->
+                    </div>
+                </div>
+                <div class="stages-grid" id="stages-container">
+                    <!-- Stages cards populated dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- TAB 2: HERO SELECT -->
+            <div id="tab-heroes" class="tab-content">
+                <div class="heroes-grid" id="heroes-container">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- TAB 3: UPGRADE SHOP -->
+            <div id="tab-shop" class="tab-content">
+                <div class="shop-grid">
+                    <!-- Castle & Mana Upgrades -->
+                    <div class="shop-category">
+                        <h3 class="shop-cat-title">⚡ 성채 & 마나 연구소</h3>
+                        <div class="upgrade-item" data-stat="manaMaxLv">
+                            <div class="up-info">
+                                <strong>최대 마나 용량</strong>
+                                <span class="up-desc">+35 최대 마나 용량 증가</span>
+                                <span class="up-lv">Lv.1</span>
+                            </div>
+                            <button class="btn-buy-upgrade">강화: 60G</button>
+                        </div>
+                        <div class="upgrade-item" data-stat="manaRegenLv">
+                            <div class="up-info">
+                                <strong>초당 마나 회복</strong>
+                                <span class="up-desc">+2.5 마나/초 충전 속도 증가</span>
+                                <span class="up-lv">Lv.1</span>
+                            </div>
+                            <button class="btn-buy-upgrade">강화: 60G</button>
+                        </div>
+                        <div class="upgrade-item" data-stat="castleHpLv">
+                            <div class="up-info">
+                                <strong>성채 내구도</strong>
+                                <span class="up-desc">+250 성채 최대 HP</span>
+                                <span class="up-lv">Lv.1</span>
+                            </div>
+                            <button class="btn-buy-upgrade">강화: 60G</button>
+                        </div>
+                        <div class="upgrade-item" data-stat="castleTurretLv">
+                            <div class="up-info">
+                                <strong>성채 방어 발리스타</strong>
+                                <span class="up-desc">+10 자동 방어 포탑 피해량</span>
+                                <span class="up-lv">Lv.1</span>
+                            </div>
+                            <button class="btn-buy-upgrade">강화: 60G</button>
+                        </div>
+                    </div>
+
+                    <!-- Hero Training -->
+                    <div class="shop-category">
+                        <h3 class="shop-cat-title">🥋 영웅 수련관</h3>
+                        <div class="upgrade-item" data-stat="heroHpLv">
+                            <div class="up-info">
+                                <strong>영웅 체력 단련</strong>
+                                <span class="up-desc">+15% 영웅 최대 체력</span>
+                                <span class="up-lv">Lv.1</span>
+                            </div>
+                            <button class="btn-buy-upgrade">강화: 60G</button>
+                        </div>
+                        <div class="upgrade-item" data-stat="heroAtkLv">
+                            <div class="up-info">
+                                <strong>영웅 공격력 연마</strong>
+                                <span class="up-desc">+15% 영웅 평타 및 스킬 피해량</span>
+                                <span class="up-lv">Lv.1</span>
+                            </div>
+                            <button class="btn-buy-upgrade">강화: 60G</button>
+                        </div>
+                    </div>
+
+                    <!-- Minions Barracks -->
+                    <div class="shop-category">
+                        <h3 class="shop-cat-title">🛡️ 유닛 병영 훈련</h3>
+                        <div class="upgrade-item" data-stat="swordsmanLv">
+                            <div class="up-info">
+                                <strong>⚔️ 검병 훈련</strong>
+                                <span class="up-desc">+15% 검병 체력 및 공격력</span>
+                                <span class="up-lv">Lv.1</span>
+                            </div>
+                            <button class="btn-buy-upgrade">강화: 60G</button>
+                        </div>
+                        <div class="upgrade-item" data-stat="shieldLv">
+                            <div class="up-info">
+                                <strong>🛡️ 방패병 훈련</strong>
+                                <span class="up-desc">+22% 방패병 체력 및 넉백 방어</span>
+                                <span class="up-lv">Lv.1</span>
+                            </div>
+                            <button class="btn-buy-upgrade">강화: 60G</button>
+                        </div>
+                        <div class="upgrade-item" data-stat="bowLv">
+                            <div class="up-info">
+                                <strong>🏹 궁수 훈련</strong>
+                                <span class="up-desc">+18% 화살 피해량 증가</span>
+                                <span class="up-lv">Lv.1</span>
+                            </div>
+                            <button class="btn-buy-upgrade">강화: 60G</button>
+                        </div>
+                        <div class="upgrade-item" data-stat="mageLv">
+                            <div class="up-info">
+                                <strong>🔮 마법사 훈련</strong>
+                                <span class="up-desc">+22% 광역 마법 폭발 피해</span>
+                                <span class="up-lv">Lv.1</span>
+                            </div>
+                            <button class="btn-buy-upgrade">강화: 60G</button>
+                        </div>
+                    </div>
+                </div>
+        </div>
+
+        <!-- Mobile QR Connect Modal -->
+        <div id="modal-qr-connect" class="modal-overlay" style="display: none;">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h2>📱 스마트폰으로 플레이하기</h2>
+                    <button id="btn-close-qr-modal" class="btn-modal-close">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p class="qr-guide-step">🌐 <strong>와이파이 상관없이 (LTE/5G/다른 Wi-Fi)</strong> 어디서나 접속 가능합니다!</p>
+                    <p class="qr-guide-step">📷 스마트폰 카메라로 아래 <strong>QR 코드</strong>를 비추면 즉시 실행됩니다:</p>
+                    <div class="qr-code-box">
+                        <img id="qr-code-img" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Fbackheyoung.github.io%2Fac00%2F" alt="스마트폰 접속 QR 코드">
+                    </div>
+                    <div class="qr-url-box">
+                        <input type="text" id="qr-url-text" readonly value="https://backheyoung.github.io/ac00/">
+                        <button id="btn-copy-url" class="btn-copy">복사</button>
+                    </div>
+                    <p class="qr-guide-tip">💡 스마트폰에서 <strong>가로 모드</strong>로 돌려 전체화면으로 플레이하세요!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Portrait Orientation Prompt -->
+        <div id="orientation-overlay">
+            <div class="orient-content">
+                <div class="orient-phone-icon">📱</div>
+                <h3 class="orient-title">화면을 가로로 돌려주세요!</h3>
+                <p class="orient-desc">스틱맨 워즈는 가로 모드에 최적화되어 있습니다.<br>스마트폰의 화면 회전을 켜고 기기를 돌려주세요 🔄</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Standalone Bundle Script -->
+    <script src="js/bundle.js"></script>
+</body>
+</html>
