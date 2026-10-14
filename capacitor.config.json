@@ -1,0 +1,12 @@
+{
+  "appId": "com.backheyoung.stickmanwars",
+  "appName": "스틱맨 워즈",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#05070a",
+    "allowMixedContent": true
+  }
+}

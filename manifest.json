@@ -1,0 +1,18 @@
+{
+  "name": "스틱맨 워즈: 영웅의 격돌",
+  "short_name": "스틱맨워즈",
+  "description": "카툰워즈 × 팔라독 스타일 고퀄리티 스틱맨 라인 디펜스 액션 게임",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#05070a",
+  "theme_color": "#05070a",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2305070a'/><circle cx='50' cy='32' r='14' fill='%2300e5ff'/><line x1='50' y1='46' x2='50' y2='74' stroke='%2300e5ff' stroke-width='6' stroke-linecap='round'/><line x1='50' y1='56' x2='30' y2='68' stroke='%2300e5ff' stroke-width='5' stroke-linecap='round'/><line x1='50' y1='56' x2='74' y2='48' stroke='%23ff0055' stroke-width='6' stroke-linecap='round'/><line x1='50' y1='74' x2='36' y2='92' stroke='%2300e5ff' stroke-width='6' stroke-linecap='round'/><line x1='50' y1='74' x2='64' y2='92' stroke='%2300e5ff' stroke-width='6' stroke-linecap='round'/></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

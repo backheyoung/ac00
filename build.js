@@ -39,3 +39,18 @@ bundle += `
 
 fs.writeFileSync(path.join(__dirname, 'js/bundle.js'), bundle, 'utf8');
 console.log('Successfully re-generated js/bundle.js');
+
+// Sync to www/ for Capacitor & APK packaging
+const wwwDir = path.join(__dirname, 'www');
+if (!fs.existsSync(wwwDir)) fs.mkdirSync(wwwDir, { recursive: true });
+if (!fs.existsSync(path.join(wwwDir, 'css'))) fs.mkdirSync(path.join(wwwDir, 'css'), { recursive: true });
+if (!fs.existsSync(path.join(wwwDir, 'js'))) fs.mkdirSync(path.join(wwwDir, 'js'), { recursive: true });
+
+fs.copyFileSync(path.join(__dirname, 'index.html'), path.join(wwwDir, 'index.html'));
+fs.copyFileSync(path.join(__dirname, 'css/style.css'), path.join(wwwDir, 'css/style.css'));
+fs.copyFileSync(path.join(__dirname, 'js/bundle.js'), path.join(wwwDir, 'js/bundle.js'));
+if (fs.existsSync(path.join(__dirname, 'manifest.json'))) fs.copyFileSync(path.join(__dirname, 'manifest.json'), path.join(wwwDir, 'manifest.json'));
+if (fs.existsSync(path.join(__dirname, 'sw.js'))) fs.copyFileSync(path.join(__dirname, 'sw.js'), path.join(wwwDir, 'sw.js'));
+console.log('Successfully synced assets to www/ for Android build');
+
+

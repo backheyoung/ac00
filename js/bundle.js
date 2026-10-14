@@ -4541,6 +4541,13 @@ if (btnFsIngame) {
 // Initialize on Load
 refreshLobbyUI();
 
+// PWA Service Worker Registration
+if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+}
+
 
     if (typeof window !== 'undefined') {
         window.ISLANDS = ISLANDS;

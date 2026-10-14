@@ -306,6 +306,19 @@ canvas {
     transform: scale(1.04);
 }
 
+.btn-apk-link {
+    text-decoration: none;
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+    color: #34d399;
+}
+
+.btn-apk-link:hover, .btn-apk-link:active {
+    background: #10b981;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+}
+
 .gold-badge {
     background: rgba(30, 41, 59, 0.85);
     border: 2px solid #ffd700;

@@ -1,0 +1,76 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies & Build Web Assets
+        run: |
+          npm install
+          node build.js
+          npx cap sync android
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant Execute Permission to gradlew
+        run: |
+          chmod +x android/gradlew
+
+      - name: Build APK with Gradle
+        run: |
+          cd android
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Rename & Prepare APK
+        run: |
+          mkdir -p output
+          cp android/app/build/outputs/apk/debug/app-debug.apk output/StickmanWars.apk
+          echo "APK generated successfully"
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StickmanWars-APK
+          path: output/StickmanWars.apk
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: "Stickman Wars v1.0.0 (Android APK)"
+          body: |
+            ## 🎮 스틱맨 워즈 (Stickman Wars) 모바일 APK 다운로드
+            
+            스마트폰에서 바로 설치하여 플레이할 수 있는 공식 Android APK 파일입니다.
+            
+            ### 📥 설치 방법
+            1. 아래 Assets에서 **`StickmanWars.apk`**를 스마트폰으로 다운로드합니다.
+            2. 다운로드 완료 후 파일을 열어 **'설치'**를 진행합니다.
+               *(보안 경고창이 뜨면 '무시하고 설치' 또는 '출처를 알 수 없는 앱 허용'을 눌러주세요)*
+            3. 홈 화면에 생성된 **'스틱맨 워즈'** 아이콘을 터치하여 바로 플레이하세요!
+          files: output/StickmanWars.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
