@@ -330,6 +330,147 @@ class SoundEngine {
             }, idx * 150);
         });
     }
+
+    // ================= PROCEDURAL CALM BGM ENGINE =================
+    initBgm() {
+        if (this.bgmInitialized) return;
+        this.bgmInitialized = true;
+        this.bgmEnabled = localStorage.getItem('stickman_bgm_enabled') !== 'false';
+        this.bgmGain = null;
+        this.bgmFilter = null;
+        this.bgmTimer = null;
+        this.bgmStep = 0;
+    }
+
+    startBgm() {
+        this.init();
+        this.initBgm();
+        if (!this.bgmEnabled || !this.ctx || this.bgmTimer) return;
+
+        if (!this.bgmGain) {
+            this.bgmGain = this.ctx.createGain();
+            this.bgmGain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+
+            this.bgmFilter = this.ctx.createBiquadFilter();
+            this.bgmFilter.type = 'lowpass';
+            this.bgmFilter.frequency.setValueAtTime(1100, this.ctx.currentTime);
+
+            this.bgmGain.connect(this.bgmFilter);
+            this.bgmFilter.connect(this.ctx.destination);
+        }
+
+        // Chords: 4 gentle bars in F major / D minor (Peaceful fantasy atmosphere)
+        const sequence = [
+            // Bar 1 (Fmaj7)
+            { root: 87.31, chord: [174.61, 220.00, 261.63, 329.63], melody: 523.25 },
+            { chord: [261.63, 329.63], melody: 440.00 },
+            { chord: [220.00, 261.63], melody: 392.00 },
+            { chord: [174.61, 261.63], melody: 329.63 },
+
+            // Bar 2 (Dm7)
+            { root: 73.42, chord: [146.83, 220.00, 261.63, 349.23], melody: 440.00 },
+            { chord: [220.00, 261.63], melody: 392.00 },
+            { chord: [174.61, 220.00], melody: 349.23 },
+            { chord: [146.83, 261.63], melody: 293.66 },
+
+            // Bar 3 (Bbmaj7)
+            { root: 58.27, chord: [116.54, 174.61, 220.00, 293.66], melody: 349.23 },
+            { chord: [174.61, 220.00], melody: 392.00 },
+            { chord: [220.00, 293.66], melody: 440.00 },
+            { chord: [174.61, 293.66], melody: 523.25 },
+
+            // Bar 4 (C9 / C)
+            { root: 65.41, chord: [130.81, 196.00, 261.63, 293.66], melody: 587.33 },
+            { chord: [196.00, 261.63], melody: 523.25 },
+            { chord: [164.81, 196.00], melody: 392.00 },
+            { chord: [130.81, 261.63], melody: 329.63 }
+        ];
+
+        const stepTime = 650; // ms per beat (gentle and relaxed tempo)
+
+        const playStep = () => {
+            if (!this.bgmEnabled || !this.ctx) return;
+            const item = sequence[this.bgmStep % sequence.length];
+            this.bgmStep++;
+
+            const now = this.ctx.currentTime;
+
+            // 1. Warm sub bass on chord root
+            if (item.root) {
+                try {
+                    const bassOsc = this.ctx.createOscillator();
+                    const bassGain = this.ctx.createGain();
+                    bassOsc.type = 'sine';
+                    bassOsc.frequency.setValueAtTime(item.root, now);
+                    bassGain.gain.setValueAtTime(0.28, now);
+                    bassGain.gain.exponentialRampToValueAtTime(0.01, now + (stepTime * 3.5) / 1000);
+                    bassOsc.connect(bassGain);
+                    bassGain.connect(this.bgmGain);
+                    bassOsc.start(now);
+                    bassOsc.stop(now + (stepTime * 3.6) / 1000);
+                } catch (e) {}
+            }
+
+            // 2. Soft Rhodes / music box chord notes
+            if (item.chord) {
+                item.chord.forEach((freq, idx) => {
+                    try {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+                        gain.gain.setValueAtTime(0.001, now + idx * 0.04);
+                        gain.gain.linearRampToValueAtTime(0.065, now + idx * 0.04 + 0.03);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 1.4);
+                        osc.connect(gain);
+                        gain.connect(this.bgmGain);
+                        osc.start(now + idx * 0.04);
+                        osc.stop(now + idx * 0.04 + 1.45);
+                    } catch (e) {}
+                });
+            }
+
+            // 3. Calm bell/harp melody note
+            if (item.melody) {
+                try {
+                    const melOsc = this.ctx.createOscillator();
+                    const melGain = this.ctx.createGain();
+                    melOsc.type = 'sine';
+                    melOsc.frequency.setValueAtTime(item.melody, now + 0.08);
+                    melGain.gain.setValueAtTime(0.001, now + 0.08);
+                    melGain.gain.linearRampToValueAtTime(0.085, now + 0.1);
+                    melGain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+                    melOsc.connect(melGain);
+                    melGain.connect(this.bgmGain);
+                    melOsc.start(now + 0.08);
+                    melOsc.stop(now + 1.15);
+                } catch (e) {}
+            }
+
+            this.bgmTimer = setTimeout(playStep, stepTime);
+        };
+
+        playStep();
+    }
+
+    stopBgm() {
+        if (this.bgmTimer) {
+            clearTimeout(this.bgmTimer);
+            this.bgmTimer = null;
+        }
+    }
+
+    toggleBgm() {
+        this.initBgm();
+        this.bgmEnabled = !this.bgmEnabled;
+        localStorage.setItem('stickman_bgm_enabled', this.bgmEnabled ? 'true' : 'false');
+        if (this.bgmEnabled) {
+            this.startBgm();
+        } else {
+            this.stopBgm();
+        }
+        return this.bgmEnabled;
+    }
 }
 
 const sound = new SoundEngine();
@@ -2277,6 +2418,30 @@ class Hero {
             }
 
         } else {
+            // Fluid Run-and-Attack: Allow moving, jumping, and comboing during basic attacks!
+            if (['attack1', 'attack2', 'attack3'].includes(this.state)) {
+                let moveDir = 0;
+                if (input.left) moveDir -= 1;
+                if (input.right) moveDir += 1;
+                if (moveDir !== 0) {
+                    this.facing = moveDir;
+                    this.x += moveDir * this.speed * 0.9 * dt;
+                }
+
+                // Jump while attacking
+                if (input.jump && this.y >= this.groundY) {
+                    this.vy = -450;
+                    sound.jump();
+                    particles.addDust(this.x, this.y, 0);
+                }
+
+                // Smooth Combo Chaining: if hit apex connected and player taps attack, go to next attack!
+                if (input.attack && this.attackHitDone && this.state !== 'attack3') {
+                    input.attack = false;
+                    this.performBasicAttack();
+                }
+            }
+
             // ================= IN-ACTION FORWARD STEP & HIT DETECTION =================
             if (this.state === 'attack1') {
                 const duration = 0.34;
@@ -3952,38 +4117,18 @@ const heroesContainer = document.getElementById('heroes-container');
 // Universal Fast-Tap Helper (Instant 0ms Mobile Touch & Desktop Mouse Support)
 function bindFastTap(elem, callback) {
     if (!elem) return;
-    let touchHandled = false;
-    let touchStartX = 0, touchStartY = 0;
-    let touchStartTime = 0;
+    let lastTapTime = 0;
 
-    elem.addEventListener('touchstart', (e) => {
-        touchHandled = true;
-        touchStartTime = Date.now();
-        const t = e.touches[0];
-        touchStartX = t.clientX;
-        touchStartY = t.clientY;
-    }, { passive: true });
-
-    elem.addEventListener('touchend', (e) => {
-        if (!touchHandled) return;
-        const elapsed = Date.now() - touchStartTime;
-        const t = e.changedTouches[0];
-        const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
-        
-        // If deliberate tap (held < 500ms and moved < 20px)
-        if (elapsed < 500 && dist < 20) {
-            e.preventDefault();
-            sound.init();
-            callback(e);
-        }
-        setTimeout(() => { touchHandled = false; }, 400);
-    }, { passive: false });
-
-    elem.addEventListener('click', (e) => {
-        if (touchHandled) return;
+    const handleTap = (e) => {
+        const now = Date.now();
+        if (now - lastTapTime < 220) return; // Prevent rapid duplicate firing
+        lastTapTime = now;
         sound.init();
+        sound.startBgm();
         callback(e);
-    });
+    };
+
+    elem.addEventListener('click', handleTap);
 }
 
 // Tab Switching
@@ -4191,7 +4336,37 @@ function renderHeroes() {
     });
 }
 
+let shopEventsInitialized = false;
+function initShopEvents() {
+    if (shopEventsInitialized) return;
+    shopEventsInitialized = true;
+
+    const shopItems = document.querySelectorAll('.upgrade-item');
+    shopItems.forEach(item => {
+        const statKey = item.dataset.stat;
+        const buyBtn = item.querySelector('.btn-buy-upgrade');
+        if (!buyBtn) return;
+
+        let lastBuyTime = 0;
+        bindFastTap(buyBtn, () => {
+            const now = Date.now();
+            if (now - lastBuyTime < 350) return; // Strict debounce to prevent accidental chain-buying
+            lastBuyTime = now;
+
+            if (saveManager.upgradeStat(statKey)) {
+                sound.victory();
+                refreshLobbyUI();
+                showToast('✨ 강화 완료!');
+            } else {
+                sound.defeat();
+                showToast('골드가 부족합니다!');
+            }
+        });
+    });
+}
+
 function refreshShopItems() {
+    initShopEvents();
     const shopItems = document.querySelectorAll('.upgrade-item');
     shopItems.forEach(item => {
         const statKey = item.dataset.stat;
@@ -4209,17 +4384,6 @@ function refreshShopItems() {
             } else {
                 buyBtn.classList.add('disabled');
             }
-
-            bindFastTap(buyBtn, () => {
-                if (saveManager.upgradeStat(statKey)) {
-                    sound.victory();
-                    refreshLobbyUI();
-                    showToast('✨ 강화 완료!');
-                } else {
-                    sound.defeat();
-                    showToast('골드가 부족합니다!');
-                }
-            });
         }
     });
 }
@@ -4269,49 +4433,52 @@ function exitToLobby() {
 
 if (btnPauseLobby) bindFastTap(btnPauseLobby, exitToLobby);
 
-// ================= MOBILE & PC TOUCH EVENT BINDINGS =================
+// ================= MOBILE & PC MULTI-TOUCH POINTER SYSTEM =================
 function bindTouchButton(elemId, onDown, onUp) {
     const btn = document.getElementById(elemId);
     if (!btn) return;
 
-    let isPressed = false;
+    let activePointerId = null;
 
     const start = (e) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        if (isPressed) return;
-        isPressed = true;
+        e.preventDefault();
+        e.stopPropagation();
+        if (activePointerId !== null) return;
+        activePointerId = e.pointerId;
+        try {
+            btn.setPointerCapture(e.pointerId);
+        } catch (err) {}
         sound.init();
+        sound.startBgm();
         btn.classList.add('active');
         if (onDown) onDown();
     };
 
     const stop = (e) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        if (!isPressed) return;
-        isPressed = false;
+        if (e.pointerId !== activePointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        activePointerId = null;
+        btn.classList.remove('active');
+        try {
+            btn.releasePointerCapture(e.pointerId);
+        } catch (err) {}
+        if (onUp) onUp();
+    };
+
+    const cancel = (e) => {
+        if (e.pointerId !== activePointerId) return;
+        activePointerId = null;
         btn.classList.remove('active');
         if (onUp) onUp();
     };
 
     btn.addEventListener('pointerdown', start);
-    window.addEventListener('pointerup', stop);
-    window.addEventListener('pointercancel', stop);
-
-    btn.addEventListener('touchstart', start, { passive: false });
-    window.addEventListener('touchend', stop, { passive: false });
-    window.addEventListener('touchcancel', stop, { passive: false });
-
-    btn.addEventListener('mousedown', start);
-    window.addEventListener('mouseup', stop);
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointercancel', cancel);
 }
 
-// Left / Right / Jump
+// Left / Right / Jump (Both Left and Right Action Jump Buttons!)
 bindTouchButton('touch-left',
     () => { if (currentGame) currentGame.input.left = true; },
     () => { if (currentGame) currentGame.input.left = false; }
@@ -4327,23 +4494,34 @@ bindTouchButton('touch-jump',
     () => { if (currentGame) currentGame.input.jump = false; }
 );
 
-// Attack Button (Interactive Aiming for Archer)
+bindTouchButton('touch-jump-action',
+    () => { if (currentGame) currentGame.input.jump = true; },
+    () => { if (currentGame) currentGame.input.jump = false; }
+);
+
+// Attack Button (Interactive Aiming for Archer, Run & Slash for Melee)
 const touchAttackBtn = document.getElementById('touch-attack');
 if (touchAttackBtn) {
+    let attackPointerId = null;
     let touchOrigin = null;
 
     const startAttack = (e) => {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
+        e.preventDefault();
+        e.stopPropagation();
+        if (attackPointerId !== null) return;
+        attackPointerId = e.pointerId;
+        try {
+            touchAttackBtn.setPointerCapture(e.pointerId);
+        } catch (err) {}
         sound.init();
+        sound.startBgm();
+        touchAttackBtn.classList.add('active');
         if (!currentGame) return;
 
         if (currentGame.hero.type === 'archer') {
             currentGame.input.aiming = true;
             currentGame.input.attackHeld = true;
-            const touch = e.touches ? e.touches[0] : (e.clientX !== undefined ? e : null);
-            if (touch) {
-                touchOrigin = { x: touch.clientX, y: touch.clientY };
-            }
+            touchOrigin = { x: e.clientX, y: e.clientY };
             currentGame.input.aimOffset = { dx: (currentGame.hero.facing || 1) * 150, dy: -30 };
         } else {
             currentGame.input.attack = true;
@@ -4351,40 +4529,39 @@ if (touchAttackBtn) {
     };
 
     const moveAttack = (e) => {
+        if (e.pointerId !== attackPointerId) return;
         if (!currentGame || !currentGame.input.aiming || !touchOrigin) return;
-        const touch = e.touches ? e.touches[0] : (e.clientX !== undefined ? e : null);
-        if (!touch) return;
-        const dx = touch.clientX - touchOrigin.x;
-        const dy = touch.clientY - touchOrigin.y;
+        const dx = e.clientX - touchOrigin.x;
+        const dy = e.clientY - touchOrigin.y;
         if (Math.hypot(dx, dy) > 10) {
             currentGame.input.aimOffset = { dx: dx * 3, dy: dy * 3 };
         }
     };
 
     const endAttack = (e) => {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
+        if (e.pointerId !== attackPointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        attackPointerId = null;
+        touchOrigin = null;
+        touchAttackBtn.classList.remove('active');
+        try {
+            touchAttackBtn.releasePointerCapture(e.pointerId);
+        } catch (err) {}
         if (!currentGame) return;
+
         if (currentGame.hero.type === 'archer') {
             currentGame.input.releaseAim = true;
             currentGame.input.releaseAttack = true;
             currentGame.input.aiming = false;
             currentGame.input.attackHeld = false;
         }
-        touchOrigin = null;
     };
 
     touchAttackBtn.addEventListener('pointerdown', startAttack);
-    window.addEventListener('pointermove', moveAttack);
-    window.addEventListener('pointerup', endAttack);
-    window.addEventListener('pointercancel', endAttack);
-
-    touchAttackBtn.addEventListener('touchstart', startAttack, { passive: false });
-    window.addEventListener('touchmove', moveAttack, { passive: false });
-    window.addEventListener('touchend', endAttack, { passive: false });
-
-    touchAttackBtn.addEventListener('mousedown', startAttack);
-    window.addEventListener('mousemove', moveAttack);
-    window.addEventListener('mouseup', endAttack);
+    touchAttackBtn.addEventListener('pointermove', moveAttack);
+    touchAttackBtn.addEventListener('pointerup', endAttack);
+    touchAttackBtn.addEventListener('pointercancel', endAttack);
 }
 
 // Skills
@@ -4403,11 +4580,17 @@ bindTouchButton('touch-ult',
     () => {}
 );
 
-// Summon buttons
+// Summon buttons (Instant Multi-touch Pointer Response)
 ['swordsman', 'shield', 'bow', 'mage'].forEach((unit, idx) => {
     const btn = document.getElementById(`touch-summon-${idx + 1}`);
     if (btn) {
-        bindFastTap(btn, () => {
+        btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            sound.init();
+            sound.startBgm();
+            btn.classList.add('active');
+            setTimeout(() => btn.classList.remove('active'), 120);
             if (currentGame) currentGame.trySummon(unit);
         });
     }
@@ -4416,7 +4599,13 @@ bindTouchButton('touch-ult',
 // Mana Boost
 const manaBoostBtn = document.getElementById('touch-mana-boost');
 if (manaBoostBtn) {
-    bindFastTap(manaBoostBtn, () => {
+    manaBoostBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sound.init();
+        sound.startBgm();
+        manaBoostBtn.classList.add('active');
+        setTimeout(() => manaBoostBtn.classList.remove('active'), 120);
         if (currentGame) {
             currentGame.boostBattleMana();
             const costLabel = document.getElementById('label-boost-cost');
@@ -4533,12 +4722,42 @@ if (btnFsIngame) {
     bindFastTap(btnFsIngame, toggleFullscreen);
 }
 
-// Web Audio Unlock on First Touch/Click
-['touchstart', 'click', 'keydown'].forEach(evt => {
-    window.addEventListener(evt, () => sound.init(), { once: true, passive: true });
+// BGM Controls
+const btnBgmToggle = document.getElementById('btn-bgm-toggle');
+const btnBgmToggleIngame = document.getElementById('btn-bgm-toggle-ingame');
+
+function updateBgmButtonLabels(enabled) {
+    const label = enabled ? '🎵 BGM ON' : '🔇 BGM OFF';
+    if (btnBgmToggle) btnBgmToggle.textContent = label;
+    if (btnBgmToggleIngame) btnBgmToggleIngame.textContent = label;
+}
+
+if (btnBgmToggle) {
+    bindFastTap(btnBgmToggle, () => {
+        const enabled = sound.toggleBgm();
+        updateBgmButtonLabels(enabled);
+        showToast(enabled ? '🎵 잔잔한 BGM이 켜졌습니다' : '🔇 BGM이 꺼졌습니다');
+    });
+}
+if (btnBgmToggleIngame) {
+    bindFastTap(btnBgmToggleIngame, () => {
+        const enabled = sound.toggleBgm();
+        updateBgmButtonLabels(enabled);
+        showToast(enabled ? '🎵 잔잔한 BGM이 켜졌습니다' : '🔇 BGM이 꺼졌습니다');
+    });
+}
+
+// Web Audio & Calm BGM Unlock on First Touch/Click
+['touchstart', 'pointerdown', 'click', 'keydown'].forEach(evt => {
+    window.addEventListener(evt, () => {
+        sound.init();
+        sound.startBgm();
+    }, { once: true, passive: true });
 });
 
 // Initialize on Load
+sound.initBgm();
+updateBgmButtonLabels(sound.bgmEnabled);
 refreshLobbyUI();
 
 // PWA Service Worker Registration

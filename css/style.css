@@ -51,8 +51,10 @@ canvas {
 
 #ingame-top-bar {
     position: absolute;
-    top: 14px;
-    right: 18px;
+    top: max(14px, env(safe-area-inset-top));
+    right: max(18px, env(safe-area-inset-right));
+    display: flex;
+    gap: 8px;
     pointer-events: auto;
 }
 
@@ -69,16 +71,16 @@ canvas {
 }
 
 .btn-ctrl-sm:hover, .btn-ctrl-sm:active {
-    background: #ef4444;
+    background: #38bdf8;
     color: #fff;
-    border-color: #ef4444;
+    border-color: #38bdf8;
 }
 
 /* Left Virtual D-Pad */
 .virtual-dpad {
     position: absolute;
-    bottom: 24px;
-    left: 20px;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    left: max(20px, env(safe-area-inset-left));
     display: flex;
     gap: 12px;
     pointer-events: auto;
@@ -126,7 +128,7 @@ canvas {
 /* Bottom Center Summon Bar */
 .virtual-summon-bar {
     position: absolute;
-    bottom: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -184,10 +186,10 @@ canvas {
 /* Right Virtual Action Buttons */
 .virtual-actions {
     position: absolute;
-    bottom: 20px;
-    right: 20px;
-    width: 190px;
-    height: 190px;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    right: max(20px, env(safe-area-inset-right));
+    width: 215px;
+    height: 195px;
     pointer-events: auto;
 }
 
@@ -208,6 +210,25 @@ canvas {
     font-weight: 800;
 }
 
+.btn-jump-right {
+    position: absolute;
+    bottom: 4px;
+    left: 42px;
+    width: 66px;
+    height: 66px;
+    font-size: 18px;
+    border-radius: 50%;
+    border-color: #38bdf8;
+    background: rgba(14, 165, 233, 0.45);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+}
+
+.btn-jump-right small {
+    font-size: 11px;
+    color: #e0f2fe;
+    font-weight: bold;
+}
+
 .btn-skill {
     position: absolute;
     width: 52px;
@@ -222,15 +243,15 @@ canvas {
 }
 
 .btn-skill1 {
-    top: 52px;
-    left: 8px;
+    top: 56px;
+    left: 4px;
     border-color: #38bdf8;
     background: rgba(14, 165, 233, 0.35);
 }
 
 .btn-skill2 {
-    top: 0;
-    left: 64px;
+    top: 4px;
+    left: 68px;
     border-color: #eab308;
     background: rgba(234, 179, 8, 0.35);
 }

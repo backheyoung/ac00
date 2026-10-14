@@ -207,6 +207,147 @@ class SoundEngine {
             }, idx * 150);
         });
     }
+
+    // ================= PROCEDURAL CALM BGM ENGINE =================
+    initBgm() {
+        if (this.bgmInitialized) return;
+        this.bgmInitialized = true;
+        this.bgmEnabled = localStorage.getItem('stickman_bgm_enabled') !== 'false';
+        this.bgmGain = null;
+        this.bgmFilter = null;
+        this.bgmTimer = null;
+        this.bgmStep = 0;
+    }
+
+    startBgm() {
+        this.init();
+        this.initBgm();
+        if (!this.bgmEnabled || !this.ctx || this.bgmTimer) return;
+
+        if (!this.bgmGain) {
+            this.bgmGain = this.ctx.createGain();
+            this.bgmGain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+
+            this.bgmFilter = this.ctx.createBiquadFilter();
+            this.bgmFilter.type = 'lowpass';
+            this.bgmFilter.frequency.setValueAtTime(1100, this.ctx.currentTime);
+
+            this.bgmGain.connect(this.bgmFilter);
+            this.bgmFilter.connect(this.ctx.destination);
+        }
+
+        // Chords: 4 gentle bars in F major / D minor (Peaceful fantasy atmosphere)
+        const sequence = [
+            // Bar 1 (Fmaj7)
+            { root: 87.31, chord: [174.61, 220.00, 261.63, 329.63], melody: 523.25 },
+            { chord: [261.63, 329.63], melody: 440.00 },
+            { chord: [220.00, 261.63], melody: 392.00 },
+            { chord: [174.61, 261.63], melody: 329.63 },
+
+            // Bar 2 (Dm7)
+            { root: 73.42, chord: [146.83, 220.00, 261.63, 349.23], melody: 440.00 },
+            { chord: [220.00, 261.63], melody: 392.00 },
+            { chord: [174.61, 220.00], melody: 349.23 },
+            { chord: [146.83, 261.63], melody: 293.66 },
+
+            // Bar 3 (Bbmaj7)
+            { root: 58.27, chord: [116.54, 174.61, 220.00, 293.66], melody: 349.23 },
+            { chord: [174.61, 220.00], melody: 392.00 },
+            { chord: [220.00, 293.66], melody: 440.00 },
+            { chord: [174.61, 293.66], melody: 523.25 },
+
+            // Bar 4 (C9 / C)
+            { root: 65.41, chord: [130.81, 196.00, 261.63, 293.66], melody: 587.33 },
+            { chord: [196.00, 261.63], melody: 523.25 },
+            { chord: [164.81, 196.00], melody: 392.00 },
+            { chord: [130.81, 261.63], melody: 329.63 }
+        ];
+
+        const stepTime = 650; // ms per beat (gentle and relaxed tempo)
+
+        const playStep = () => {
+            if (!this.bgmEnabled || !this.ctx) return;
+            const item = sequence[this.bgmStep % sequence.length];
+            this.bgmStep++;
+
+            const now = this.ctx.currentTime;
+
+            // 1. Warm sub bass on chord root
+            if (item.root) {
+                try {
+                    const bassOsc = this.ctx.createOscillator();
+                    const bassGain = this.ctx.createGain();
+                    bassOsc.type = 'sine';
+                    bassOsc.frequency.setValueAtTime(item.root, now);
+                    bassGain.gain.setValueAtTime(0.28, now);
+                    bassGain.gain.exponentialRampToValueAtTime(0.01, now + (stepTime * 3.5) / 1000);
+                    bassOsc.connect(bassGain);
+                    bassGain.connect(this.bgmGain);
+                    bassOsc.start(now);
+                    bassOsc.stop(now + (stepTime * 3.6) / 1000);
+                } catch (e) {}
+            }
+
+            // 2. Soft Rhodes / music box chord notes
+            if (item.chord) {
+                item.chord.forEach((freq, idx) => {
+                    try {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+                        gain.gain.setValueAtTime(0.001, now + idx * 0.04);
+                        gain.gain.linearRampToValueAtTime(0.065, now + idx * 0.04 + 0.03);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 1.4);
+                        osc.connect(gain);
+                        gain.connect(this.bgmGain);
+                        osc.start(now + idx * 0.04);
+                        osc.stop(now + idx * 0.04 + 1.45);
+                    } catch (e) {}
+                });
+            }
+
+            // 3. Calm bell/harp melody note
+            if (item.melody) {
+                try {
+                    const melOsc = this.ctx.createOscillator();
+                    const melGain = this.ctx.createGain();
+                    melOsc.type = 'sine';
+                    melOsc.frequency.setValueAtTime(item.melody, now + 0.08);
+                    melGain.gain.setValueAtTime(0.001, now + 0.08);
+                    melGain.gain.linearRampToValueAtTime(0.085, now + 0.1);
+                    melGain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+                    melOsc.connect(melGain);
+                    melGain.connect(this.bgmGain);
+                    melOsc.start(now + 0.08);
+                    melOsc.stop(now + 1.15);
+                } catch (e) {}
+            }
+
+            this.bgmTimer = setTimeout(playStep, stepTime);
+        };
+
+        playStep();
+    }
+
+    stopBgm() {
+        if (this.bgmTimer) {
+            clearTimeout(this.bgmTimer);
+            this.bgmTimer = null;
+        }
+    }
+
+    toggleBgm() {
+        this.initBgm();
+        this.bgmEnabled = !this.bgmEnabled;
+        localStorage.setItem('stickman_bgm_enabled', this.bgmEnabled ? 'true' : 'false');
+        if (this.bgmEnabled) {
+            this.startBgm();
+        } else {
+            this.stopBgm();
+        }
+        return this.bgmEnabled;
+    }
 }
 
 export const sound = new SoundEngine();

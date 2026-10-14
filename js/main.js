@@ -28,38 +28,18 @@ const heroesContainer = document.getElementById('heroes-container');
 // Universal Fast-Tap Helper (Instant 0ms Mobile Touch & Desktop Mouse Support)
 function bindFastTap(elem, callback) {
     if (!elem) return;
-    let touchHandled = false;
-    let touchStartX = 0, touchStartY = 0;
-    let touchStartTime = 0;
+    let lastTapTime = 0;
 
-    elem.addEventListener('touchstart', (e) => {
-        touchHandled = true;
-        touchStartTime = Date.now();
-        const t = e.touches[0];
-        touchStartX = t.clientX;
-        touchStartY = t.clientY;
-    }, { passive: true });
-
-    elem.addEventListener('touchend', (e) => {
-        if (!touchHandled) return;
-        const elapsed = Date.now() - touchStartTime;
-        const t = e.changedTouches[0];
-        const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
-        
-        // If deliberate tap (held < 500ms and moved < 20px)
-        if (elapsed < 500 && dist < 20) {
-            e.preventDefault();
-            sound.init();
-            callback(e);
-        }
-        setTimeout(() => { touchHandled = false; }, 400);
-    }, { passive: false });
-
-    elem.addEventListener('click', (e) => {
-        if (touchHandled) return;
+    const handleTap = (e) => {
+        const now = Date.now();
+        if (now - lastTapTime < 220) return; // Prevent rapid duplicate firing
+        lastTapTime = now;
         sound.init();
+        sound.startBgm();
         callback(e);
-    });
+    };
+
+    elem.addEventListener('click', handleTap);
 }
 
 // Tab Switching
@@ -267,7 +247,37 @@ function renderHeroes() {
     });
 }
 
+let shopEventsInitialized = false;
+function initShopEvents() {
+    if (shopEventsInitialized) return;
+    shopEventsInitialized = true;
+
+    const shopItems = document.querySelectorAll('.upgrade-item');
+    shopItems.forEach(item => {
+        const statKey = item.dataset.stat;
+        const buyBtn = item.querySelector('.btn-buy-upgrade');
+        if (!buyBtn) return;
+
+        let lastBuyTime = 0;
+        bindFastTap(buyBtn, () => {
+            const now = Date.now();
+            if (now - lastBuyTime < 350) return; // Strict debounce to prevent accidental chain-buying
+            lastBuyTime = now;
+
+            if (saveManager.upgradeStat(statKey)) {
+                sound.victory();
+                refreshLobbyUI();
+                showToast('✨ 강화 완료!');
+            } else {
+                sound.defeat();
+                showToast('골드가 부족합니다!');
+            }
+        });
+    });
+}
+
 function refreshShopItems() {
+    initShopEvents();
     const shopItems = document.querySelectorAll('.upgrade-item');
     shopItems.forEach(item => {
         const statKey = item.dataset.stat;
@@ -285,17 +295,6 @@ function refreshShopItems() {
             } else {
                 buyBtn.classList.add('disabled');
             }
-
-            bindFastTap(buyBtn, () => {
-                if (saveManager.upgradeStat(statKey)) {
-                    sound.victory();
-                    refreshLobbyUI();
-                    showToast('✨ 강화 완료!');
-                } else {
-                    sound.defeat();
-                    showToast('골드가 부족합니다!');
-                }
-            });
         }
     });
 }
@@ -345,49 +344,52 @@ function exitToLobby() {
 
 if (btnPauseLobby) bindFastTap(btnPauseLobby, exitToLobby);
 
-// ================= MOBILE & PC TOUCH EVENT BINDINGS =================
+// ================= MOBILE & PC MULTI-TOUCH POINTER SYSTEM =================
 function bindTouchButton(elemId, onDown, onUp) {
     const btn = document.getElementById(elemId);
     if (!btn) return;
 
-    let isPressed = false;
+    let activePointerId = null;
 
     const start = (e) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        if (isPressed) return;
-        isPressed = true;
+        e.preventDefault();
+        e.stopPropagation();
+        if (activePointerId !== null) return;
+        activePointerId = e.pointerId;
+        try {
+            btn.setPointerCapture(e.pointerId);
+        } catch (err) {}
         sound.init();
+        sound.startBgm();
         btn.classList.add('active');
         if (onDown) onDown();
     };
 
     const stop = (e) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        if (!isPressed) return;
-        isPressed = false;
+        if (e.pointerId !== activePointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        activePointerId = null;
+        btn.classList.remove('active');
+        try {
+            btn.releasePointerCapture(e.pointerId);
+        } catch (err) {}
+        if (onUp) onUp();
+    };
+
+    const cancel = (e) => {
+        if (e.pointerId !== activePointerId) return;
+        activePointerId = null;
         btn.classList.remove('active');
         if (onUp) onUp();
     };
 
     btn.addEventListener('pointerdown', start);
-    window.addEventListener('pointerup', stop);
-    window.addEventListener('pointercancel', stop);
-
-    btn.addEventListener('touchstart', start, { passive: false });
-    window.addEventListener('touchend', stop, { passive: false });
-    window.addEventListener('touchcancel', stop, { passive: false });
-
-    btn.addEventListener('mousedown', start);
-    window.addEventListener('mouseup', stop);
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointercancel', cancel);
 }
 
-// Left / Right / Jump
+// Left / Right / Jump (Both Left and Right Action Jump Buttons!)
 bindTouchButton('touch-left',
     () => { if (currentGame) currentGame.input.left = true; },
     () => { if (currentGame) currentGame.input.left = false; }
@@ -403,23 +405,34 @@ bindTouchButton('touch-jump',
     () => { if (currentGame) currentGame.input.jump = false; }
 );
 
-// Attack Button (Interactive Aiming for Archer)
+bindTouchButton('touch-jump-action',
+    () => { if (currentGame) currentGame.input.jump = true; },
+    () => { if (currentGame) currentGame.input.jump = false; }
+);
+
+// Attack Button (Interactive Aiming for Archer, Run & Slash for Melee)
 const touchAttackBtn = document.getElementById('touch-attack');
 if (touchAttackBtn) {
+    let attackPointerId = null;
     let touchOrigin = null;
 
     const startAttack = (e) => {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
+        e.preventDefault();
+        e.stopPropagation();
+        if (attackPointerId !== null) return;
+        attackPointerId = e.pointerId;
+        try {
+            touchAttackBtn.setPointerCapture(e.pointerId);
+        } catch (err) {}
         sound.init();
+        sound.startBgm();
+        touchAttackBtn.classList.add('active');
         if (!currentGame) return;
 
         if (currentGame.hero.type === 'archer') {
             currentGame.input.aiming = true;
             currentGame.input.attackHeld = true;
-            const touch = e.touches ? e.touches[0] : (e.clientX !== undefined ? e : null);
-            if (touch) {
-                touchOrigin = { x: touch.clientX, y: touch.clientY };
-            }
+            touchOrigin = { x: e.clientX, y: e.clientY };
             currentGame.input.aimOffset = { dx: (currentGame.hero.facing || 1) * 150, dy: -30 };
         } else {
             currentGame.input.attack = true;
@@ -427,40 +440,39 @@ if (touchAttackBtn) {
     };
 
     const moveAttack = (e) => {
+        if (e.pointerId !== attackPointerId) return;
         if (!currentGame || !currentGame.input.aiming || !touchOrigin) return;
-        const touch = e.touches ? e.touches[0] : (e.clientX !== undefined ? e : null);
-        if (!touch) return;
-        const dx = touch.clientX - touchOrigin.x;
-        const dy = touch.clientY - touchOrigin.y;
+        const dx = e.clientX - touchOrigin.x;
+        const dy = e.clientY - touchOrigin.y;
         if (Math.hypot(dx, dy) > 10) {
             currentGame.input.aimOffset = { dx: dx * 3, dy: dy * 3 };
         }
     };
 
     const endAttack = (e) => {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
+        if (e.pointerId !== attackPointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        attackPointerId = null;
+        touchOrigin = null;
+        touchAttackBtn.classList.remove('active');
+        try {
+            touchAttackBtn.releasePointerCapture(e.pointerId);
+        } catch (err) {}
         if (!currentGame) return;
+
         if (currentGame.hero.type === 'archer') {
             currentGame.input.releaseAim = true;
             currentGame.input.releaseAttack = true;
             currentGame.input.aiming = false;
             currentGame.input.attackHeld = false;
         }
-        touchOrigin = null;
     };
 
     touchAttackBtn.addEventListener('pointerdown', startAttack);
-    window.addEventListener('pointermove', moveAttack);
-    window.addEventListener('pointerup', endAttack);
-    window.addEventListener('pointercancel', endAttack);
-
-    touchAttackBtn.addEventListener('touchstart', startAttack, { passive: false });
-    window.addEventListener('touchmove', moveAttack, { passive: false });
-    window.addEventListener('touchend', endAttack, { passive: false });
-
-    touchAttackBtn.addEventListener('mousedown', startAttack);
-    window.addEventListener('mousemove', moveAttack);
-    window.addEventListener('mouseup', endAttack);
+    touchAttackBtn.addEventListener('pointermove', moveAttack);
+    touchAttackBtn.addEventListener('pointerup', endAttack);
+    touchAttackBtn.addEventListener('pointercancel', endAttack);
 }
 
 // Skills
@@ -479,11 +491,17 @@ bindTouchButton('touch-ult',
     () => {}
 );
 
-// Summon buttons
+// Summon buttons (Instant Multi-touch Pointer Response)
 ['swordsman', 'shield', 'bow', 'mage'].forEach((unit, idx) => {
     const btn = document.getElementById(`touch-summon-${idx + 1}`);
     if (btn) {
-        bindFastTap(btn, () => {
+        btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            sound.init();
+            sound.startBgm();
+            btn.classList.add('active');
+            setTimeout(() => btn.classList.remove('active'), 120);
             if (currentGame) currentGame.trySummon(unit);
         });
     }
@@ -492,7 +510,13 @@ bindTouchButton('touch-ult',
 // Mana Boost
 const manaBoostBtn = document.getElementById('touch-mana-boost');
 if (manaBoostBtn) {
-    bindFastTap(manaBoostBtn, () => {
+    manaBoostBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sound.init();
+        sound.startBgm();
+        manaBoostBtn.classList.add('active');
+        setTimeout(() => manaBoostBtn.classList.remove('active'), 120);
         if (currentGame) {
             currentGame.boostBattleMana();
             const costLabel = document.getElementById('label-boost-cost');
@@ -609,12 +633,42 @@ if (btnFsIngame) {
     bindFastTap(btnFsIngame, toggleFullscreen);
 }
 
-// Web Audio Unlock on First Touch/Click
-['touchstart', 'click', 'keydown'].forEach(evt => {
-    window.addEventListener(evt, () => sound.init(), { once: true, passive: true });
+// BGM Controls
+const btnBgmToggle = document.getElementById('btn-bgm-toggle');
+const btnBgmToggleIngame = document.getElementById('btn-bgm-toggle-ingame');
+
+function updateBgmButtonLabels(enabled) {
+    const label = enabled ? '🎵 BGM ON' : '🔇 BGM OFF';
+    if (btnBgmToggle) btnBgmToggle.textContent = label;
+    if (btnBgmToggleIngame) btnBgmToggleIngame.textContent = label;
+}
+
+if (btnBgmToggle) {
+    bindFastTap(btnBgmToggle, () => {
+        const enabled = sound.toggleBgm();
+        updateBgmButtonLabels(enabled);
+        showToast(enabled ? '🎵 잔잔한 BGM이 켜졌습니다' : '🔇 BGM이 꺼졌습니다');
+    });
+}
+if (btnBgmToggleIngame) {
+    bindFastTap(btnBgmToggleIngame, () => {
+        const enabled = sound.toggleBgm();
+        updateBgmButtonLabels(enabled);
+        showToast(enabled ? '🎵 잔잔한 BGM이 켜졌습니다' : '🔇 BGM이 꺼졌습니다');
+    });
+}
+
+// Web Audio & Calm BGM Unlock on First Touch/Click
+['touchstart', 'pointerdown', 'click', 'keydown'].forEach(evt => {
+    window.addEventListener(evt, () => {
+        sound.init();
+        sound.startBgm();
+    }, { once: true, passive: true });
 });
 
 // Initialize on Load
+sound.initBgm();
+updateBgmButtonLabels(sound.bgmEnabled);
 refreshLobbyUI();
 
 // PWA Service Worker Registration

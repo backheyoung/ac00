@@ -59,8 +59,8 @@ jobs:
       - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: "Stickman Wars v1.0.0 (Android APK)"
+          tag_name: v1.0.1
+          name: "Stickman Wars v1.0.1 (Android APK)"
           body: |
             ## 🎮 스틱맨 워즈 (Stickman Wars) 모바일 APK 다운로드
             

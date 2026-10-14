@@ -279,6 +279,30 @@ export class Hero {
             }
 
         } else {
+            // Fluid Run-and-Attack: Allow moving, jumping, and comboing during basic attacks!
+            if (['attack1', 'attack2', 'attack3'].includes(this.state)) {
+                let moveDir = 0;
+                if (input.left) moveDir -= 1;
+                if (input.right) moveDir += 1;
+                if (moveDir !== 0) {
+                    this.facing = moveDir;
+                    this.x += moveDir * this.speed * 0.9 * dt;
+                }
+
+                // Jump while attacking
+                if (input.jump && this.y >= this.groundY) {
+                    this.vy = -450;
+                    sound.jump();
+                    particles.addDust(this.x, this.y, 0);
+                }
+
+                // Smooth Combo Chaining: if hit apex connected and player taps attack, go to next attack!
+                if (input.attack && this.attackHitDone && this.state !== 'attack3') {
+                    input.attack = false;
+                    this.performBasicAttack();
+                }
+            }
+
             // ================= IN-ACTION FORWARD STEP & HIT DETECTION =================
             if (this.state === 'attack1') {
                 const duration = 0.34;
